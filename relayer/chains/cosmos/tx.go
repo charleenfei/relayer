@@ -2,6 +2,7 @@ package cosmos
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math"
@@ -45,6 +46,7 @@ import (
 	localhost "github.com/cosmos/ibc-go/v8/modules/light-clients/09-localhost"
 	strideicqtypes "github.com/cosmos/relayer/v2/relayer/chains/cosmos/stride"
 	"github.com/cosmos/relayer/v2/relayer/ethermint"
+	wasmclient "github.com/cosmos/relayer/v2/relayer/codecs/08-wasm-types"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
@@ -1271,6 +1273,7 @@ func (cc *CosmosProvider) MsgChannelCloseConfirm(msgCloseInit provider.ChannelIn
 	}), nil
 }
 
+
 func (cc *CosmosProvider) MsgUpdateClientHeader(latestHeader provider.IBCHeader, trustedHeight clienttypes.Height, trustedHeader provider.IBCHeader) (ibcexported.ClientMessage, error) {
 	trustedCosmosHeader, ok := trustedHeader.(provider.TendermintIBCHeader)
 	if !ok {
@@ -1286,6 +1289,7 @@ func (cc *CosmosProvider) MsgUpdateClientHeader(latestHeader provider.IBCHeader,
 	if err != nil {
 		return nil, fmt.Errorf("error converting trusted validators to proto object: %w", err)
 	}
+	trustedValidatorsProto.TotalVotingPower = trustedCosmosHeader.ValidatorSet.TotalVotingPower()
 
 	signedHeaderProto := latestCosmosHeader.SignedHeader.ToProto()
 
@@ -1293,13 +1297,35 @@ func (cc *CosmosProvider) MsgUpdateClientHeader(latestHeader provider.IBCHeader,
 	if err != nil {
 		return nil, fmt.Errorf("error converting validator set to proto object: %w", err)
 	}
+	validatorSetProto.TotalVotingPower = latestCosmosHeader.ValidatorSet.TotalVotingPower()
 
-	return &tmclient.Header{
+	var clientHeader ibcexported.ClientMessage
+
+	tmClientHeader := tmclient.Header{
 		SignedHeader:      signedHeaderProto,
 		ValidatorSet:      validatorSetProto,
 		TrustedValidators: trustedValidatorsProto,
 		TrustedHeight:     trustedHeight,
-	}, nil
+	}
+
+	clientHeader = &tmClientHeader
+
+	if cc.PCfg.WasmCodeID != "" {
+		tmClientHeaderBz, err := cc.Cdc.Marshaler.MarshalInterface(clientHeader)
+		if err != nil {
+			return &wasmclient.Header{}, nil
+		}
+		height, ok := tmClientHeader.GetHeight().(clienttypes.Height)
+		if !ok {
+			return &wasmclient.Header{}, fmt.Errorf("error converting tm client header height")
+		}
+		clientHeader = &wasmclient.Header{
+			Data: tmClientHeaderBz,
+			Height: height,
+		}
+	}
+
+	return clientHeader, nil
 }
 
 func (cc *CosmosProvider) QueryICQWithProof(ctx context.Context, path string, request []byte, height uint64) (provider.ICQProof, error) {
@@ -1343,6 +1369,16 @@ func (cc *CosmosProvider) MsgSubmitQueryResponse(chainID string, queryID provide
 }
 
 func (cc *CosmosProvider) MsgSubmitMisbehaviour(clientID string, misbehaviour ibcexported.ClientMessage) (provider.RelayerMessage, error) {
+	if cc.PCfg.WasmCodeID != "" {
+		wasmData, err := cc.Cdc.Marshaler.MarshalInterface(misbehaviour)
+		if err != nil {
+			return nil, err
+		}
+		misbehaviour = &wasmclient.Misbehaviour{
+			Data: wasmData,
+		}
+	}
+	
 	signer, err := cc.Address()
 	if err != nil {
 		return nil, err
@@ -1529,7 +1565,17 @@ func (cc *CosmosProvider) queryTMClientState(ctx context.Context, srch int64, sr
 		return &tmclient.ClientState{}, err
 	}
 
-	clientState, ok := clientStateExported.(*tmclient.ClientState)
+	switch cs := clientStateExported.(type) {
+	case *wasmclient.ClientState:
+		var clientState ibcexported.ClientState
+		err = cc.Cdc.Marshaler.UnmarshalInterface(cs.Data, &clientState)
+		if err != nil {
+			return &tmclient.ClientState{}, fmt.Errorf("error unmarshaling tm client state, %w", err)
+		}
+		clientStateExported = clientState
+	}
+	
+	tmClientState, ok := clientStateExported.(*tmclient.ClientState)
 	if !ok {
 		return &tmclient.ClientState{},
 			fmt.Errorf("error when casting exported clientstate to tendermint type, got(%T)", clientStateExported)
@@ -1557,7 +1603,7 @@ func (cc *CosmosProvider) queryLocalhostClientState(ctx context.Context, srch in
 			fmt.Errorf("error when casting exported clientstate to localhost client type, got(%T)", clientStateExported)
 	}
 
-	return clientState, nil
+	return tmClientState, nil
 }
 
 // DefaultUpgradePath is the default IBC upgrade path set for an on-chain light client
@@ -1575,8 +1621,10 @@ func (cc *CosmosProvider) NewClientState(
 ) (ibcexported.ClientState, error) {
 	revisionNumber := clienttypes.ParseChainID(dstChainID)
 
+	var clientState exported.ClientState
+
 	// Create the ClientState we want on 'c' tracking 'dst'
-	return &tmclient.ClientState{
+	tmClientState := tmclient.ClientState{
 		ChainId:         dstChainID,
 		TrustLevel:      tmclient.NewFractionFromTm(light.DefaultTrustLevel),
 		TrustingPeriod:  dstTrustingPeriod,
@@ -1591,7 +1639,28 @@ func (cc *CosmosProvider) NewClientState(
 		UpgradePath:                  defaultUpgradePath,
 		AllowUpdateAfterExpiry:       allowUpdateAfterExpiry,
 		AllowUpdateAfterMisbehaviour: allowUpdateAfterMisbehaviour,
-	}, nil
+	}
+
+	clientState = &tmClientState
+
+	if cc.PCfg.WasmCodeID != "" {
+		tmClientStateBz, err := cc.Cdc.Marshaler.MarshalInterface(clientState)
+		if err != nil {
+			return &wasmclient.ClientState{}, err
+		}
+		codeID, err := hex.DecodeString(cc.PCfg.WasmCodeID)
+		if err != nil {
+			return &wasmclient.ClientState{}, err
+		}
+		clientState = &wasmclient.ClientState{
+			Data: tmClientStateBz,
+			CodeId: codeID,
+			LatestHeight: tmClientState.LatestHeight,
+		}
+	}
+
+
+	return clientState, nil
 }
 
 func (cc *CosmosProvider) UpdateFeesSpent(chain, key, address string, fees sdk.Coins) {

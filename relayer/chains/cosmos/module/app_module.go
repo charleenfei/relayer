@@ -9,7 +9,8 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/spf13/cobra"
 
-	tmlightclient "github.com/cosmos/ibc-go/v8/modules/light-clients/07-tendermint"
+	tmlightclient "github.com/cosmos/ibc-go/v7/modules/light-clients/07-tendermint"
+	wasm "github.com/cosmos/relayer/v2/relayer/codecs/08-wasm-types"
 )
 
 // AppModuleBasic defines the basic application module used by the module.
@@ -27,7 +28,9 @@ func (AppModuleBasic) RegisterLegacyAminoCodec(*codec.LegacyAmino) {}
 func (AppModuleBasic) RegisterInterfaces(registry codectypes.InterfaceRegistry) {
 	tmlightclient.RegisterInterfaces(registry)
 	solomachine.RegisterInterfaces(registry)
+	wasm.RegisterInterfaces(registry)
 	localhost.RegisterInterfaces(registry)
+	// TODO: add the localhost light client when ibc-go v7.1.0 is available
 }
 
 // RegisterGRPCGatewayRoutes registers the gRPC Gateway routes for the ibc module.
