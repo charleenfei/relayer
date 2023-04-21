@@ -26,7 +26,8 @@ func (c *Chain) CreateClients(ctx context.Context,
 	customClientTrustingPeriod,
 	maxClockDrift time.Duration,
 	customClientTrustingPeriodPercentage int64,
-	memo string) (string, string, error) {
+	memo, srcWasmCodeID, dstWasmCodeID string) (string, string, error) {
+
 	// Query the latest heights on src and dst and retry if the query fails
 	var srch, dsth int64
 	if err := retry.Do(func() error {
@@ -78,7 +79,8 @@ func (c *Chain) CreateClients(ctx context.Context,
 			allowUpdateAfterExpiry, allowUpdateAfterMisbehaviour,
 			override, customClientTrustingPeriod,
 			overrideUnbondingPeriod, maxClockDrift,
-			customClientTrustingPeriodPercentage, memo)
+			customClientTrustingPeriodPercentage, memo, srcWasmCodeID)
+
 		if err != nil {
 			return fmt.Errorf("failed to create client on src chain{%s}: %w", c.ChainID(), err)
 		}
@@ -93,7 +95,8 @@ func (c *Chain) CreateClients(ctx context.Context,
 			allowUpdateAfterExpiry, allowUpdateAfterMisbehaviour,
 			override, customClientTrustingPeriod,
 			overrideUnbondingPeriod, maxClockDrift,
-			customClientTrustingPeriodPercentage, memo)
+			customClientTrustingPeriodPercentage, memo, dstWasmCodeID)
+
 		if err != nil {
 			return fmt.Errorf("failed to create client on dst chain{%s}: %w", dst.ChainID(), err)
 		}
@@ -128,7 +131,7 @@ func CreateClient(
 	overrideUnbondingPeriod,
 	maxClockDrift time.Duration,
 	customClientTrustingPeriodPercentage int64,
-	memo string) (string, error) {
+	memo, srcWasmCodeID string) (string, error) {
 	// If a client ID was specified in the path and override is not set, ensure the client exists.
 	if !override && src.PathEnd.ClientID != "" {
 		// TODO: check client is not expired
@@ -186,7 +189,7 @@ func CreateClient(
 
 	// We want to create a light client on the src chain which tracks the state of the dst chain.
 	// So we build a new client state from dst and attempt to use this for creating the light client on src.
-	clientState, err := dst.ChainProvider.NewClientState(dst.ChainID(), dstUpdateHeader, tp, ubdPeriod, maxClockDrift, allowUpdateAfterExpiry, allowUpdateAfterMisbehaviour)
+	clientState, err := dst.ChainProvider.NewClientState(dst.ChainID(), dstUpdateHeader, tp, ubdPeriod, maxClockDrift, allowUpdateAfterExpiry, allowUpdateAfterMisbehaviour, srcWasmCodeID)
 	if err != nil {
 		return "", fmt.Errorf("failed to create new client state for chain{%s}: %w", dst.ChainID(), err)
 	}
@@ -233,7 +236,7 @@ func CreateClient(
 			return "", fmt.Errorf("failed to marshal consensus state for wasm client: %w", err)
 		}
 		consensusState = &wasmclient.ConsensusState{
-			Data: consensusStateBz,
+			Data:      consensusStateBz,
 			Timestamp: consensusState.GetTimestamp(),
 		}
 	}
@@ -352,7 +355,8 @@ func MsgUpdateClient(
 	var updateHeader ibcexported.ClientMessage
 	if err := retry.Do(func() error {
 		var err error
-		updateHeader, err = src.ChainProvider.MsgUpdateClientHeader(srcHeader, dstClientState.GetLatestHeight().(clienttypes.Height), dstTrustedHeader)
+		clientType := dstClientState.ClientType()
+		updateHeader, err = src.ChainProvider.MsgUpdateClientHeader(srcHeader, dstClientState.GetLatestHeight().(clienttypes.Height), dstTrustedHeader, clientType)
 		return err
 	}, retry.Context(ctx), RtyAtt, RtyDel, RtyErr, retry.OnRetry(func(n uint, err error) {
 		src.log.Info(

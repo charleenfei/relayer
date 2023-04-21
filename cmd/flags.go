@@ -62,6 +62,8 @@ const (
 	flagStuckPacketChainID             = "stuck-packet-chain-id"
 	flagStuckPacketHeightStart         = "stuck-packet-height-start"
 	flagStuckPacketHeightEnd           = "stuck-packet-height-end"
+	flagSrcWasmCodeID           = "src-wasm-code-id"
+	flagDstWasmCodeID           = "dst-wasm-code-id"
 )
 
 const blankValue = "blank"
@@ -334,6 +336,9 @@ func clientParameterFlags(v *viper.Viper, cmd *cobra.Command) *cobra.Command {
 	)
 	cmd.Flags().Duration(flagMaxClockDrift, (10 * time.Minute),
 		"custom max clock drift for client(s)")
+
+	cmd.Flags().String(flagSrcWasmCodeID, "", "src chain's wasm code id for clients (default: empty / not used)")
+	cmd.Flags().String(flagDstWasmCodeID, "", "dst chain's wasm code id for clients (default: empty / not used)")
 
 	if err := v.BindPFlag(flagUpdateAfterExpiry, cmd.Flags().Lookup(flagUpdateAfterExpiry)); err != nil {
 		panic(err)

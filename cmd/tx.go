@@ -95,6 +95,16 @@ func createClientsCmd(a *appState) *cobra.Command {
 				return err
 			}
 
+			srcWasmCodeID, err := cmd.Flags().GetString(flagSrcWasmCodeID)
+			if err != nil {
+				return err
+			}
+
+			dstWasmCodeID, err := cmd.Flags().GetString(flagDstWasmCodeID)
+			if err != nil {
+				return err
+			}
+
 			path := args[0]
 
 			c, src, dst, err := a.config.ChainsFromPath(path)
@@ -120,6 +130,7 @@ func createClientsCmd(a *appState) *cobra.Command {
 				maxClockDrift,
 				customClientTrustingPeriodPercentage,
 				a.config.memo(cmd),
+				srcWasmCodeID, dstWasmCodeID,
 			)
 			if err != nil {
 				return err
@@ -181,6 +192,11 @@ func createClientCmd(a *appState) *cobra.Command {
 			}
 
 			maxClockDrift, err := cmd.Flags().GetDuration(flagMaxClockDrift)
+			if err != nil {
+				return err
+			}
+
+			srcWasmCodeID, err := cmd.Flags().GetString(flagSrcWasmCodeID)
 			if err != nil {
 				return err
 			}
@@ -266,7 +282,9 @@ func createClientCmd(a *appState) *cobra.Command {
 				maxClockDrift,
 				customClientTrustingPeriodPercentage,
 				a.config.memo(cmd),
+				srcWasmCodeID,
 			)
+
 			if err != nil {
 				return err
 			}
@@ -431,6 +449,16 @@ $ %s tx conn demo-path --timeout 5s`,
 				return err
 			}
 
+			srcWasmCodeID, err := cmd.Flags().GetString(flagSrcWasmCodeID)
+			if err != nil {
+				return err
+			}
+
+			dstWasmCodeID, err := cmd.Flags().GetString(flagDstWasmCodeID)
+			if err != nil {
+				return err
+			}
+
 			// ensure that keys exist
 			if exists := c[src].ChainProvider.KeyExists(c[src].ChainProvider.Key()); !exists {
 				return fmt.Errorf("key %s not found on src chain %s", c[src].ChainProvider.Key(), c[src].ChainID())
@@ -458,7 +486,9 @@ $ %s tx conn demo-path --timeout 5s`,
 				maxClockDrift,
 				customClientTrustingPeriodPercentage,
 				memo,
+				srcWasmCodeID, dstWasmCodeID,
 			)
+
 			if err != nil {
 				return err
 			}
@@ -747,6 +777,16 @@ $ %s tx connect demo-path --src-port transfer --dst-port transfer --order unorde
 				return err
 			}
 
+			srcWasmCodeID, err := cmd.Flags().GetString(flagSrcWasmCodeID)
+			if err != nil {
+				return err
+			}
+
+			dstWasmCodeID, err := cmd.Flags().GetString(flagDstWasmCodeID)
+			if err != nil {
+				return err
+			}
+
 			// ensure that keys exist
 			if exists := c[src].ChainProvider.KeyExists(c[src].ChainProvider.Key()); !exists {
 				return fmt.Errorf("key %s not found on src chain %s", c[src].ChainProvider.Key(), c[src].ChainID())
@@ -764,17 +804,7 @@ $ %s tx connect demo-path --src-port transfer --dst-port transfer --order unorde
 			}
 
 			// create clients if they aren't already created
-			clientSrc, clientDst, err := c[src].CreateClients(
-				cmd.Context(),
-				c[dst],
-				allowUpdateAfterExpiry,
-				allowUpdateAfterMisbehaviour,
-				override,
-				customClientTrustingPeriod,
-				maxClockDrift,
-				customClientTrustingPeriodPercentage,
-				memo,
-			)
+			clientSrc, clientDst, err := c[src].CreateClients(cmd.Context(), c[dst], allowUpdateAfterExpiry, allowUpdateAfterMisbehaviour, override, customClientTrustingPeriod, memo)
 			if err != nil {
 				return fmt.Errorf("error creating clients: %w", err)
 			}

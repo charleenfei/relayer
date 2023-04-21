@@ -1274,7 +1274,7 @@ func (cc *CosmosProvider) MsgChannelCloseConfirm(msgCloseInit provider.ChannelIn
 }
 
 
-func (cc *CosmosProvider) MsgUpdateClientHeader(latestHeader provider.IBCHeader, trustedHeight clienttypes.Height, trustedHeader provider.IBCHeader) (ibcexported.ClientMessage, error) {
+func (cc *CosmosProvider) MsgUpdateClientHeader(latestHeader provider.IBCHeader, trustedHeight clienttypes.Height, trustedHeader provider.IBCHeader, clientType string) (ibcexported.ClientMessage, error) {
 	trustedCosmosHeader, ok := trustedHeader.(provider.TendermintIBCHeader)
 	if !ok {
 		return nil, fmt.Errorf("unsupported IBC trusted header type, expected: TendermintIBCHeader, actual: %T", trustedHeader)
@@ -1310,7 +1310,7 @@ func (cc *CosmosProvider) MsgUpdateClientHeader(latestHeader provider.IBCHeader,
 
 	clientHeader = &tmClientHeader
 
-	if cc.PCfg.WasmCodeID != "" {
+	if clientType == "08-wasm" { // TODO: replace with ibcexported.Wasm at v7.2
 		tmClientHeaderBz, err := cc.Cdc.Marshaler.MarshalInterface(clientHeader)
 		if err != nil {
 			return &wasmclient.Header{}, nil
@@ -1369,7 +1369,7 @@ func (cc *CosmosProvider) MsgSubmitQueryResponse(chainID string, queryID provide
 }
 
 func (cc *CosmosProvider) MsgSubmitMisbehaviour(clientID string, misbehaviour ibcexported.ClientMessage) (provider.RelayerMessage, error) {
-	if cc.PCfg.WasmCodeID != "" {
+	if strings.Contains(clientID, "08-wasm") { // TODO: replace with ibcexported.Wasm at v7.2
 		wasmData, err := cc.Cdc.Marshaler.MarshalInterface(misbehaviour)
 		if err != nil {
 			return nil, err
@@ -1618,10 +1618,11 @@ func (cc *CosmosProvider) NewClientState(
 	maxClockDrift time.Duration,
 	allowUpdateAfterExpiry,
 	allowUpdateAfterMisbehaviour bool,
+	srcWasmCodeID string,
 ) (ibcexported.ClientState, error) {
 	revisionNumber := clienttypes.ParseChainID(dstChainID)
 
-	var clientState exported.ClientState
+	var clientState ibcexported.ClientState
 
 	// Create the ClientState we want on 'c' tracking 'dst'
 	tmClientState := tmclient.ClientState{
@@ -1643,12 +1644,12 @@ func (cc *CosmosProvider) NewClientState(
 
 	clientState = &tmClientState
 
-	if cc.PCfg.WasmCodeID != "" {
+	if srcWasmCodeID != "" {
 		tmClientStateBz, err := cc.Cdc.Marshaler.MarshalInterface(clientState)
 		if err != nil {
 			return &wasmclient.ClientState{}, err
 		}
-		codeID, err := hex.DecodeString(cc.PCfg.WasmCodeID)
+		codeID, err := hex.DecodeString(srcWasmCodeID)
 		if err != nil {
 			return &wasmclient.ClientState{}, err
 		}
