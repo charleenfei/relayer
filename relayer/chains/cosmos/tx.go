@@ -45,8 +45,8 @@ import (
 	tmclient "github.com/cosmos/ibc-go/v8/modules/light-clients/07-tendermint"
 	localhost "github.com/cosmos/ibc-go/v8/modules/light-clients/09-localhost"
 	strideicqtypes "github.com/cosmos/relayer/v2/relayer/chains/cosmos/stride"
-	"github.com/cosmos/relayer/v2/relayer/ethermint"
 	wasmclient "github.com/cosmos/relayer/v2/relayer/codecs/08-wasm-types"
+	"github.com/cosmos/relayer/v2/relayer/ethermint"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
@@ -1273,7 +1273,6 @@ func (cc *CosmosProvider) MsgChannelCloseConfirm(msgCloseInit provider.ChannelIn
 	}), nil
 }
 
-
 func (cc *CosmosProvider) MsgUpdateClientHeader(latestHeader provider.IBCHeader, trustedHeight clienttypes.Height, trustedHeader provider.IBCHeader, clientType string) (ibcexported.ClientMessage, error) {
 	trustedCosmosHeader, ok := trustedHeader.(provider.TendermintIBCHeader)
 	if !ok {
@@ -1320,7 +1319,7 @@ func (cc *CosmosProvider) MsgUpdateClientHeader(latestHeader provider.IBCHeader,
 			return &wasmclient.Header{}, fmt.Errorf("error converting tm client header height")
 		}
 		clientHeader = &wasmclient.Header{
-			Data: tmClientHeaderBz,
+			Data:   tmClientHeaderBz,
 			Height: height,
 		}
 	}
@@ -1378,7 +1377,7 @@ func (cc *CosmosProvider) MsgSubmitMisbehaviour(clientID string, misbehaviour ib
 			Data: wasmData,
 		}
 	}
-	
+
 	signer, err := cc.Address()
 	if err != nil {
 		return nil, err
@@ -1574,14 +1573,14 @@ func (cc *CosmosProvider) queryTMClientState(ctx context.Context, srch int64, sr
 		}
 		clientStateExported = clientState
 	}
-	
+
 	tmClientState, ok := clientStateExported.(*tmclient.ClientState)
 	if !ok {
 		return &tmclient.ClientState{},
 			fmt.Errorf("error when casting exported clientstate to tendermint type, got(%T)", clientStateExported)
 	}
 
-	return clientState, nil
+	return tmClientState, nil
 }
 
 // queryLocalhostClientState retrieves the latest consensus state for a client in state at a given height
@@ -1597,13 +1596,13 @@ func (cc *CosmosProvider) queryLocalhostClientState(ctx context.Context, srch in
 		return &localhost.ClientState{}, err
 	}
 
-	clientState, ok := clientStateExported.(*localhost.ClientState)
+	localHostClientState, ok := clientStateExported.(*localhost.ClientState)
 	if !ok {
 		return &localhost.ClientState{},
 			fmt.Errorf("error when casting exported clientstate to localhost client type, got(%T)", clientStateExported)
 	}
 
-	return tmClientState, nil
+	return localHostClientState, nil
 }
 
 // DefaultUpgradePath is the default IBC upgrade path set for an on-chain light client
@@ -1654,12 +1653,11 @@ func (cc *CosmosProvider) NewClientState(
 			return &wasmclient.ClientState{}, err
 		}
 		clientState = &wasmclient.ClientState{
-			Data: tmClientStateBz,
-			CodeId: codeID,
+			Data:         tmClientStateBz,
+			CodeId:       codeID,
 			LatestHeight: tmClientState.LatestHeight,
 		}
 	}
-
 
 	return clientState, nil
 }

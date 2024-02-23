@@ -7,7 +7,7 @@ import (
 	"time"
 
 	sdkcodec "github.com/cosmos/cosmos-sdk/codec"
-	"github.com/cosmos/cosmos-sdk/codec/types"
+	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	clienttypes "github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
 	ibcexported "github.com/cosmos/ibc-go/v8/modules/core/exported"
 	tmclient "github.com/cosmos/ibc-go/v8/modules/light-clients/07-tendermint"
@@ -17,7 +17,7 @@ import (
 var tendermintClientCodec = tmClientCodec()
 
 func tmClientCodec() *sdkcodec.ProtoCodec {
-	interfaceRegistry := types.NewInterfaceRegistry()
+	interfaceRegistry := codectypes.NewInterfaceRegistry()
 	tmclient.RegisterInterfaces(interfaceRegistry)
 	wasmclient.RegisterInterfaces(interfaceRegistry)
 	return sdkcodec.NewProtoCodec(interfaceRegistry)

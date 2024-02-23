@@ -5,11 +5,12 @@ import (
 	"github.com/cosmos/cosmos-sdk/codec"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	solomachine "github.com/cosmos/ibc-go/v8/modules/light-clients/06-solomachine"
+	tmlightclient "github.com/cosmos/ibc-go/v8/modules/light-clients/07-tendermint"
 	localhost "github.com/cosmos/ibc-go/v8/modules/light-clients/09-localhost"
+
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/spf13/cobra"
 
-	tmlightclient "github.com/cosmos/ibc-go/v7/modules/light-clients/07-tendermint"
 	wasm "github.com/cosmos/relayer/v2/relayer/codecs/08-wasm-types"
 )
 

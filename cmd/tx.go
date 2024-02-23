@@ -804,7 +804,19 @@ $ %s tx connect demo-path --src-port transfer --dst-port transfer --order unorde
 			}
 
 			// create clients if they aren't already created
-			clientSrc, clientDst, err := c[src].CreateClients(cmd.Context(), c[dst], allowUpdateAfterExpiry, allowUpdateAfterMisbehaviour, override, customClientTrustingPeriod, memo)
+			clientSrc, clientDst, err := c[src].CreateClients(
+				cmd.Context(),
+				c[dst],
+				allowUpdateAfterExpiry,
+				allowUpdateAfterMisbehaviour,
+				override,
+				customClientTrustingPeriod,
+				maxClockDrift,
+				customClientTrustingPeriodPercentage,
+				memo,
+				srcWasmCodeID,
+				dstWasmCodeID,
+			)
 			if err != nil {
 				return fmt.Errorf("error creating clients: %w", err)
 			}
