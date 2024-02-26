@@ -24,6 +24,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	legacyerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	cosmosproto "github.com/cosmos/gogoproto/proto"
+	wasmclient "github.com/cosmos/ibc-go/modules/light-clients/08-wasm/types"
 	transfertypes "github.com/cosmos/ibc-go/v8/modules/apps/transfer/types"
 	clienttypes "github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
 	conntypes "github.com/cosmos/ibc-go/v8/modules/core/03-connection/types"
@@ -40,7 +41,6 @@ import (
 	penumbratypes "github.com/cosmos/relayer/v2/relayer/chains/penumbra/core/transaction/v1alpha1"
 	penumbrardsa "github.com/cosmos/relayer/v2/relayer/chains/penumbra/crypto/decaf377_rdsa/v1alpha1"
 	penumbracrypto "github.com/cosmos/relayer/v2/relayer/chains/penumbra/crypto/tct/v1alpha1"
-	wasmclient "github.com/cosmos/relayer/v2/relayer/codecs/08-wasm-types"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
@@ -929,7 +929,7 @@ func (cc *PenumbraProvider) MsgSubmitMisbehaviour(clientID string, misbehaviour 
 		if err != nil {
 			return nil, err
 		}
-		misbehaviour = &wasmclient.Misbehaviour{
+		misbehaviour = &wasmclient.ClientMessage{
 			Data: wasmData,
 		}
 	}
@@ -1680,15 +1680,10 @@ func (cc *PenumbraProvider) MsgUpdateClientHeader(
 	if clientType == "08-wasm" { // TODO: replace with ibcexported.Wasm at v7.2
 		tmClientHeaderBz, err := cc.Codec.Marshaler.MarshalInterface(clientHeader)
 		if err != nil {
-			return &wasmclient.Header{}, nil
+			return &wasmclient.ClientMessage{}, nil
 		}
-		height, ok := tmClientHeader.GetHeight().(clienttypes.Height)
-		if !ok {
-			return &wasmclient.Header{}, fmt.Errorf("error converting tm client header height")
-		}
-		clientHeader = &wasmclient.Header{
-			Data:   tmClientHeaderBz,
-			Height: height,
+		clientHeader = &wasmclient.ClientMessage{
+			Data: tmClientHeaderBz,
 		}
 	}
 
@@ -2102,13 +2097,13 @@ func (cc *PenumbraProvider) NewClientState(
 		if err != nil {
 			return &wasmclient.ClientState{}, err
 		}
-		codeID, err := hex.DecodeString(srcWasmCodeID)
+		checksum, err := hex.DecodeString(srcWasmCodeID)
 		if err != nil {
 			return &wasmclient.ClientState{}, err
 		}
 		clientState = &wasmclient.ClientState{
 			Data:         tmClientStateBz,
-			CodeId:       codeID,
+			Checksum:       checksum,
 			LatestHeight: tmClientState.LatestHeight,
 		}
 	}

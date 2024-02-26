@@ -11,7 +11,7 @@ import (
 	clienttypes "github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
 	ibcexported "github.com/cosmos/ibc-go/v8/modules/core/exported"
 	tmclient "github.com/cosmos/ibc-go/v8/modules/light-clients/07-tendermint"
-	wasmclient "github.com/cosmos/relayer/v2/relayer/codecs/08-wasm-types"
+	wasmclient "github.com/cosmos/ibc-go/modules/light-clients/08-wasm/types"
 )
 
 var tendermintClientCodec = tmClientCodec()
@@ -74,7 +74,7 @@ func CheckForMisbehaviour(
 	}
 
 	switch wasmHeader := clientMsg.(type) {
-	case *wasmclient.Header:
+	case *wasmclient.ClientMessage:
 		clientMsg, err = clienttypes.UnmarshalClientMessage(tendermintClientCodec, wasmHeader.Data)
 		if err != nil {
 			return nil, err

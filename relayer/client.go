@@ -7,11 +7,11 @@ import (
 
 	"github.com/avast/retry-go/v4"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
+	wasmclient "github.com/cosmos/ibc-go/modules/light-clients/08-wasm/types"
 	clienttypes "github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
 	ibcexported "github.com/cosmos/ibc-go/v8/modules/core/exported"
 	tmclient "github.com/cosmos/ibc-go/v8/modules/light-clients/07-tendermint"
 	"github.com/cosmos/relayer/v2/relayer/chains/cosmos"
-	wasmclient "github.com/cosmos/relayer/v2/relayer/codecs/08-wasm-types"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
@@ -236,8 +236,7 @@ func CreateClient(
 			return "", fmt.Errorf("failed to marshal consensus state for wasm client: %w", err)
 		}
 		consensusState = &wasmclient.ConsensusState{
-			Data:      consensusStateBz,
-			Timestamp: consensusState.GetTimestamp(),
+			Data: consensusStateBz,
 		}
 	}
 
