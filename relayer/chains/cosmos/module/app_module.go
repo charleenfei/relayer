@@ -7,11 +7,10 @@ import (
 	solomachine "github.com/cosmos/ibc-go/v8/modules/light-clients/06-solomachine"
 	tmlightclient "github.com/cosmos/ibc-go/v8/modules/light-clients/07-tendermint"
 	localhost "github.com/cosmos/ibc-go/v8/modules/light-clients/09-localhost"
+	ibcwasm "github.com/cosmos/ibc-go/modules/light-clients/08-wasm/types"
 
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/spf13/cobra"
-
-	wasm "github.com/cosmos/relayer/v2/relayer/codecs/08-wasm-types"
 )
 
 // AppModuleBasic defines the basic application module used by the module.
@@ -29,7 +28,7 @@ func (AppModuleBasic) RegisterLegacyAminoCodec(*codec.LegacyAmino) {}
 func (AppModuleBasic) RegisterInterfaces(registry codectypes.InterfaceRegistry) {
 	tmlightclient.RegisterInterfaces(registry)
 	solomachine.RegisterInterfaces(registry)
-	wasm.RegisterInterfaces(registry)
+	ibcwasm.RegisterInterfaces(registry)
 	localhost.RegisterInterfaces(registry)
 	// TODO: add the localhost light client when ibc-go v7.1.0 is available
 }

@@ -181,16 +181,6 @@ func (res *ClientInfo) parseClientAttribute(log *zap.Logger, attr sdk.Attribute)
 			RevisionNumber: revisionNumber,
 			RevisionHeight: revisionHeight,
 		}
-	case clienttypes.AttributeKeyHeader:
-		data, err := hex.DecodeString(attr.Value)
-		if err != nil {
-			log.Error("Error parsing client header",
-				zap.String("header", attr.Value),
-				zap.Error(err),
-			)
-			return
-		}
-		res.Header = data
 	}
 }
 
@@ -339,7 +329,7 @@ func (res *ChannelInfo) parseChannelAttribute(attr sdk.Attribute) {
 		res.CounterpartyChannelID = attr.Value
 	case chantypes.AttributeKeyConnectionID:
 		res.ConnID = attr.Value
-	case chantypes.AttributeVersion:
+	case chantypes.AttributeKeyVersion:
 		res.Version = attr.Value
 	}
 }
