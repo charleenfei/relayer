@@ -101,7 +101,7 @@ func (mp *messageProcessor) processMessages(
 	var needsClientUpdate bool
 
 	// Localhost IBC does not permit client updates
-	if src.clientState.ClientID != ibcexported.LocalhostClientID && dst.clientState.ClientID != ibcexported.LocalhostConnectionID {
+	if !isLocalhostClient(src.clientState.ClientID, dst.clientState.ClientID) {
 		var err error
 		needsClientUpdate, err = mp.shouldUpdateClientNow(ctx, src, dst)
 		if err != nil {
@@ -118,6 +118,14 @@ func (mp *messageProcessor) processMessages(
 	return mp.trackAndSendMessages(ctx, src, dst, needsClientUpdate)
 }
 
+func isLocalhostClient(srcClientID, dstClientID string) bool {
+	if srcClientID == ibcexported.LocalhostClientID && dstClientID == ibcexported.LocalhostConnectionID {
+		return true
+	}
+
+	return false
+}
+
 // shouldUpdateClientNow determines if an update client message should be sent
 // even if there are no messages to be sent now. It will not be attempted if
 // there has not been enough blocks since the last client update attempt.
@@ -125,6 +133,7 @@ func (mp *messageProcessor) processMessages(
 // or the configured client update threshold duration has passed.
 func (mp *messageProcessor) shouldUpdateClientNow(ctx context.Context, src, dst *pathEndRuntime) (bool, error) {
 	var consensusHeightTime time.Time
+
 	if dst.clientState.ConsensusTime.IsZero() {
 		h, err := src.chainProvider.QueryIBCHeader(ctx, int64(dst.clientState.ConsensusHeight.RevisionHeight))
 		if err != nil {
@@ -247,6 +256,7 @@ func (mp *messageProcessor) assembleMsgUpdateClient(ctx context.Context, src, ds
 	clientID := dst.info.ClientID
 	clientConsensusHeight := dst.clientState.ConsensusHeight
 	trustedConsensusHeight := dst.clientTrustedState.ClientState.ConsensusHeight
+
 	var trustedNextValidatorsHash []byte
 	if dst.clientTrustedState.IBCHeader != nil {
 		trustedNextValidatorsHash = dst.clientTrustedState.IBCHeader.NextValidatorsHash()
@@ -261,11 +271,13 @@ func (mp *messageProcessor) assembleMsgUpdateClient(ctx context.Context, src, ds
 			return fmt.Errorf("observed client trusted height: %d does not equal latest client state height: %d",
 				trustedConsensusHeight.RevisionHeight, clientConsensusHeight.RevisionHeight)
 		}
+
 		header, err := src.chainProvider.QueryIBCHeader(ctx, int64(clientConsensusHeight.RevisionHeight+1))
 		if err != nil {
 			return fmt.Errorf("error getting IBC header at height: %d for chain_id: %s, %w",
 				clientConsensusHeight.RevisionHeight+1, src.info.ChainID, err)
 		}
+
 		mp.log.Debug("Had to query for client trusted IBC header",
 			zap.String("path_name", src.info.PathName),
 			zap.String("chain_id", src.info.ChainID),
@@ -274,10 +286,12 @@ func (mp *messageProcessor) assembleMsgUpdateClient(ctx context.Context, src, ds
 			zap.Uint64("height", clientConsensusHeight.RevisionHeight+1),
 			zap.Uint64("latest_height", src.latestBlock.Height),
 		)
+
 		dst.clientTrustedState = provider.ClientTrustedState{
 			ClientState: dst.clientState,
 			IBCHeader:   header,
 		}
+
 		trustedConsensusHeight = clientConsensusHeight
 		trustedNextValidatorsHash = header.NextValidatorsHash()
 	}
@@ -349,7 +363,7 @@ func (mp *messageProcessor) trackAndSendMessages(
 		return nil
 	}
 
-	if needsClientUpdate {
+	if needsClientUpdate && mp.msgUpdateClient != nil {
 		go mp.sendClientUpdate(ctx, src, dst)
 		return nil
 	}
@@ -424,6 +438,7 @@ func (mp *messageProcessor) sendBatchMessages(
 		// messages are batch with appended MsgUpdateClient
 		msgs = make([]provider.RelayerMessage, 1+len(batch))
 		msgs[0] = mp.msgUpdateClient
+
 		for i, t := range batch {
 			msgs[i+1] = t.assembledMsg()
 			fields = append(fields, zap.Object(fmt.Sprintf("msg_%d", i), t))
