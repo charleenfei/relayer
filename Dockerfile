@@ -20,7 +20,7 @@ RUN if [ "${TARGETARCH}" = "arm64" ] && [ "${BUILDARCH}" != "arm64" ]; then \
     elif [ "${TARGETARCH}" = "amd64" ] && [ "${BUILDARCH}" != "amd64" ]; then \
     export CC=x86_64-linux-musl-gcc CXX=x86_64-linux-musl-g++; \
     fi; \
-    GOOS=linux GOARCH=$TARGETARCH CGO_ENABLED=0 LDFLAGS='-linkmode external -extldflags "-static"' make install
+    GOOS=linux GOARCH=$TARGETARCH CGO_ENABLED=1 LDFLAGS='-linkmode external -extldflags "-static"' make install
 
 RUN if [ -d "/go/bin/linux_${TARGETARCH}" ]; then mv /go/bin/linux_${TARGETARCH}/* /go/bin/; fi
 

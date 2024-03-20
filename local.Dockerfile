@@ -4,7 +4,7 @@ RUN apk add --update --no-cache curl make git libc-dev bash gcc linux-headers eu
 
 ADD . .
 
-RUN CGO_ENABLED=0 LDFLAGS='-linkmode external -extldflags "-static"' make install
+RUN CGO_ENABLED=1 LDFLAGS='-linkmode external -extldflags "-static"' make install
 
 # Use minimal busybox from infra-toolkit image for final scratch image
 FROM ghcr.io/strangelove-ventures/infra-toolkit:v0.0.6 AS busybox-min
