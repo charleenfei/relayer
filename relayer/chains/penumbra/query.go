@@ -514,7 +514,7 @@ func (cc *PenumbraProvider) GenerateConnHandshakeProof(ctx context.Context, heig
 
 	eg.Go(func() error {
 		var err error
-		consensusStateRes, err = cc.QueryClientConsensusState(ctx, height, clientId, clientState.GetLatestHeight())
+		consensusStateRes, err = cc.QueryClientConsensusState(ctx, height, clientId, GetClientLatestHeight(clientState))
 		return err
 	})
 	eg.Go(func() error {

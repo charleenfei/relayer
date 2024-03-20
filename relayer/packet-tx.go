@@ -58,7 +58,7 @@ func (c *Chain) SendTransferMsg(
 			ctx,
 			dsth,
 			dst.ClientID(),
-			clientState.GetLatestHeight(),
+			GetClientLatestHeight(clientState),
 		)
 		if err != nil {
 			return fmt.Errorf("failed to query client consensus state: %w", err)
@@ -83,7 +83,7 @@ func (c *Chain) SendTransferMsg(
 		}
 	}
 
-	clientHeight := h.GetLatestHeight().GetRevisionHeight()
+	clientHeight := GetClientLatestHeight(h).GetRevisionHeight()
 
 	switch {
 	case toHeightOffset > 0 && toTimeOffset > 0:
@@ -103,7 +103,7 @@ func (c *Chain) SendTransferMsg(
 		SourceChannel: srcChannel.ChannelId,
 		SourcePort:    srcChannel.PortId,
 		TimeoutHeight: clienttypes.Height{
-			RevisionNumber: h.GetLatestHeight().GetRevisionNumber(),
+			RevisionNumber: GetClientLatestHeight(h).GetRevisionNumber(),
 			RevisionHeight: timeoutHeight,
 		},
 		TimeoutTimestamp: timeoutTimestamp,

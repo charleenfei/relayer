@@ -598,7 +598,7 @@ func (cc *PenumbraProvider) ConnectionOpenTry(ctx context.Context, dstQueryProvi
 		ProofInit:       connStateProof,
 		ProofClient:     clientStateProof,
 		ProofConsensus:  consensusStateProof,
-		ConsensusHeight: clientState.GetLatestHeight().(clienttypes.Height),
+		ConsensusHeight: GetClientLatestHeight(clientState),
 		Signer:          acc,
 	}
 
@@ -650,7 +650,7 @@ func (cc *PenumbraProvider) ConnectionOpenAck(ctx context.Context, dstQueryProvi
 		ProofTry:        connStateProof,
 		ProofClient:     clientStateProof,
 		ProofConsensus:  consensusStateProof,
-		ConsensusHeight: clientState.GetLatestHeight().(clienttypes.Height),
+		ConsensusHeight: GetClientLatestHeight(clientState),
 		Signer:          acc,
 	}
 
@@ -1405,7 +1405,7 @@ func (cc *PenumbraProvider) MsgConnectionOpenTry(msgOpenInit provider.Connection
 		ProofInit:            proof.ConnectionStateProof,
 		ProofClient:          proof.ClientStateProof,
 		ProofConsensus:       proof.ConsensusStateProof,
-		ConsensusHeight:      proof.ClientState.GetLatestHeight().(clienttypes.Height),
+		ConsensusHeight:      GetClientLatestHeight(proof.ClientState),
 		Signer:               signer,
 	}
 
@@ -1437,7 +1437,7 @@ func (cc *PenumbraProvider) MsgConnectionOpenAck(msgOpenTry provider.ConnectionI
 		ProofTry:        proof.ConnectionStateProof,
 		ProofClient:     proof.ClientStateProof,
 		ProofConsensus:  proof.ConsensusStateProof,
-		ConsensusHeight: proof.ClientState.GetLatestHeight().(clienttypes.Height),
+		ConsensusHeight: GetClientLatestHeight(proof.ClientState),
 		Signer:          signer,
 	}
 
@@ -1964,7 +1964,7 @@ func (cc *PenumbraProvider) InjectTrustedFields(ctx context.Context, header ibce
 	}
 
 	// inject TrustedHeight as latest height stored on dst client
-	h.TrustedHeight = cs.GetLatestHeight().(clienttypes.Height)
+	h.TrustedHeight = GetClientLatestHeight(cs)
 
 	// NOTE: We need to get validators from the source chain at height: trustedHeight+1
 	// since the last trusted validators for a header at height h is the NextValidators
@@ -2103,7 +2103,7 @@ func (cc *PenumbraProvider) NewClientState(
 		}
 		clientState = &wasmclient.ClientState{
 			Data:         tmClientStateBz,
-			Checksum:       checksum,
+			Checksum:     checksum,
 			LatestHeight: tmClientState.LatestHeight,
 		}
 	}

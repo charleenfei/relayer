@@ -23,7 +23,7 @@ ldflags = -X github.com/cosmos/relayer/v2/cmd.Version=$(VERSION) \
 ldflags += $(LDFLAGS)
 ldflags := $(strip $(ldflags))
 
-BUILD_FLAGS := -ldflags '$(ldflags)'
+BUILD_FLAGS := -tags "nolink_wasmvm" -ldflags '$(ldflags)'
 
 build: go.sum
 ifeq ($(OS),Windows_NT)

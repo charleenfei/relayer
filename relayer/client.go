@@ -10,7 +10,9 @@ import (
 	wasmclient "github.com/cosmos/ibc-go/modules/light-clients/08-wasm/types"
 	clienttypes "github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
 	ibcexported "github.com/cosmos/ibc-go/v8/modules/core/exported"
+	solomachine "github.com/cosmos/ibc-go/v8/modules/light-clients/06-solomachine"
 	tmclient "github.com/cosmos/ibc-go/v8/modules/light-clients/07-tendermint"
+	localhost "github.com/cosmos/ibc-go/v8/modules/light-clients/09-localhost"
 	"github.com/cosmos/relayer/v2/relayer/chains/cosmos"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"go.uber.org/zap"
@@ -347,16 +349,16 @@ func MsgUpdateClient(
 				"Query IBC header",
 				zap.String("chain_id", src.ChainID()),
 				zap.String("client_id", src.ClientID()),
-				zap.Int64("height", int64(dstClientState.GetLatestHeight().GetRevisionHeight())+1),
+				zap.Int64("height", int64(GetClientLatestHeight(dstClientState).GetRevisionHeight())+1),
 			)
-			dstTrustedHeader, err = src.ChainProvider.QueryIBCHeader(egCtx, int64(dstClientState.GetLatestHeight().GetRevisionHeight())+1)
+			dstTrustedHeader, err = src.ChainProvider.QueryIBCHeader(egCtx, int64(GetClientLatestHeight(dstClientState).GetRevisionHeight())+1)
 			return err
 		}, retry.Context(egCtx), RtyAtt, RtyDel, RtyErr, retry.OnRetry(func(n uint, err error) {
 			src.log.Error(
 				"Failed to query IBC header when building update client message",
 				zap.String("chain_id", src.ChainID()),
 				zap.String("client_id", src.ClientID()),
-				zap.Int64("height", int64(dstClientState.GetLatestHeight().GetRevisionHeight())+1),
+				zap.Int64("height", int64(GetClientLatestHeight(dstClientState).GetRevisionHeight())+1),
 				zap.Uint("attempt", n+1),
 				zap.Uint("max_attempts", RtyAttNum),
 				zap.Error(err),
@@ -372,7 +374,7 @@ func MsgUpdateClient(
 	if err := retry.Do(func() error {
 		var err error
 		clientType := dstClientState.ClientType()
-		updateHeader, err = src.ChainProvider.MsgUpdateClientHeader(srcHeader, dstClientState.GetLatestHeight().(clienttypes.Height), dstTrustedHeader, clientType)
+		updateHeader, err = src.ChainProvider.MsgUpdateClientHeader(srcHeader, GetClientLatestHeight(dstClientState), dstTrustedHeader, clientType)
 		return err
 	}, retry.Context(ctx), RtyAtt, RtyDel, RtyErr, retry.OnRetry(func(n uint, err error) {
 		src.log.Info(
@@ -511,6 +513,23 @@ func UpgradeClient(
 	}
 
 	return nil
+}
+
+// GetClientLatestHeight returns the latest height of the ibc ClientState
+func GetClientLatestHeight(clientState ibcexported.ClientState) clienttypes.Height {
+	switch cs := clientState.(type) {
+	case *localhost.ClientState:
+		return cs.LatestHeight
+	case *solomachine.ClientState:
+		// NOTE: RevisionNumber is always 0 for solomachine client heights.
+		return clienttypes.NewHeight(0, cs.Sequence)
+	case *tmclient.ClientState:
+		return cs.LatestHeight
+	case *wasmclient.ClientState:
+		return cs.LatestHeight
+	default:
+		panic(fmt.Errorf("client type %T is unsupported", cs))
+	}
 }
 
 // MustGetHeight takes the height inteface and returns the actual height

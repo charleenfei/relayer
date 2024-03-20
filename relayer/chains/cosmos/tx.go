@@ -1080,7 +1080,7 @@ func (cc *CosmosProvider) MsgConnectionOpenTry(msgOpenInit provider.ConnectionIn
 		ProofInit:            proof.ConnectionStateProof,
 		ProofClient:          proof.ClientStateProof,
 		ProofConsensus:       proof.ConsensusStateProof,
-		ConsensusHeight:      proof.ClientState.GetLatestHeight().(clienttypes.Height),
+		ConsensusHeight:      GetClientLatestHeight(proof.ClientState),
 		Signer:               signer,
 	}
 
@@ -1112,7 +1112,7 @@ func (cc *CosmosProvider) MsgConnectionOpenAck(msgOpenTry provider.ConnectionInf
 		ProofTry:        proof.ConnectionStateProof,
 		ProofClient:     proof.ClientStateProof,
 		ProofConsensus:  proof.ConsensusStateProof,
-		ConsensusHeight: proof.ClientState.GetLatestHeight().(clienttypes.Height),
+		ConsensusHeight: GetClientLatestHeight(proof.ClientState),
 		Signer:          signer,
 	}
 
@@ -1342,7 +1342,7 @@ func (cc *CosmosProvider) MsgUpdateClientHeader(latestHeader provider.IBCHeader,
 			return &wasmclient.ClientMessage{}, nil
 		}
 		clientHeader = &wasmclient.ClientMessage{
-			Data:   tmClientHeaderBz,
+			Data: tmClientHeaderBz,
 		}
 	}
 
@@ -1539,7 +1539,7 @@ func (cc *CosmosProvider) InjectTrustedFields(ctx context.Context, header ibcexp
 	}
 
 	// inject TrustedHeight as latest height stored on dst client
-	h.TrustedHeight = cs.GetLatestHeight().(clienttypes.Height)
+	h.TrustedHeight = GetClientLatestHeight(cs)
 
 	// NOTE: We need to get validators from the source chain at height: trustedHeight+1
 	// since the last trusted validators for a header at height h is the NextValidators
@@ -1676,7 +1676,7 @@ func (cc *CosmosProvider) NewClientState(
 		}
 		clientState = &wasmclient.ClientState{
 			Data:         tmClientStateBz,
-			Checksum:      checksum,
+			Checksum:     checksum,
 			LatestHeight: tmClientState.LatestHeight,
 		}
 	}

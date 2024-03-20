@@ -2,8 +2,6 @@ package interchaintest_test
 
 import (
 	"context"
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
@@ -11,12 +9,13 @@ import (
 	sdkmath "cosmossdk.io/math"
 	simappparams "cosmossdk.io/simapp/params"
 	"github.com/cometbft/cometbft/crypto/tmhash"
+	cometjson "github.com/cometbft/cometbft/libs/json"
+	"github.com/cometbft/cometbft/privval"
 	cometproto "github.com/cometbft/cometbft/proto/tendermint/types"
 	cometprotoversion "github.com/cometbft/cometbft/proto/tendermint/version"
 	comettypes "github.com/cometbft/cometbft/types"
 	cometversion "github.com/cometbft/cometbft/version"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
-	sdked25519 "github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
 	"github.com/cosmos/cosmos-sdk/std"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
@@ -27,7 +26,6 @@ import (
 	ibctypes "github.com/cosmos/ibc-go/v8/modules/core/types"
 	ibccomettypes "github.com/cosmos/ibc-go/v8/modules/light-clients/07-tendermint"
 	ibctesting "github.com/cosmos/ibc-go/v8/testing"
-	ibcmocks "github.com/cosmos/ibc-go/v8/testing/mock"
 	relayertest "github.com/cosmos/relayer/v2/interchaintest"
 	"github.com/strangelove-ventures/interchaintest/v8"
 	"github.com/strangelove-ventures/interchaintest/v8/chain/cosmos"
@@ -149,25 +147,22 @@ func TestRelayerMisbehaviourDetection(t *testing.T) {
 	require.NoError(t, err)
 
 	// get latest height from prev client state above & create new height + 1
-	height := clientState.GetLatestHeight().(clienttypes.Height)
+	height := relayertest.GetClientLatestHeight(clientState)
 	newHeight := clienttypes.NewHeight(height.RevisionNumber, height.RevisionHeight+1)
 
 	// create a validator for signing duplicate header
 	keyBz, err := chainB.Validators[0].ReadFile(ctx, "config/priv_validator_key.json")
 	require.NoError(t, err)
 
-	pvk := cosmos.PrivValidatorKeyFile{}
-	err = json.Unmarshal(keyBz, &pvk)
+	var filePV privval.FilePVKey
+	err = cometjson.Unmarshal(keyBz, &filePV)
 	require.NoError(t, err)
 
-	decodedKeyBz, err := base64.StdEncoding.DecodeString(pvk.PrivKey.Value)
-	require.NoError(t, err)
+	privVal := comettypes.NewMockPVWithParams(
+		filePV.PrivKey, false, false,
+	)
 
-	privKey := &sdked25519.PrivKey{
-		Key: decodedKeyBz,
-	}
-
-	privVal := ibcmocks.PV{PrivKey: privKey}
+	// privVal := comettypes.MockPV{PrivKey: privKey}
 	pubKey, err := privVal.GetPubKey()
 	require.NoError(t, err)
 
