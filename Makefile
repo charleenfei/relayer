@@ -23,7 +23,8 @@ ldflags = -X github.com/cosmos/relayer/v2/cmd.Version=$(VERSION) \
 ldflags += $(LDFLAGS)
 ldflags := $(strip $(ldflags))
 
-BUILD_FLAGS := -tags "nolink_wasmvm" -ldflags '$(ldflags)'
+# Use build tag "nolink_libwasmvm" to disable libwasmvm linking to consume only types from 08-wasm
+BUILD_FLAGS := -tags "nolink_libwasmvm" -ldflags '$(ldflags)'
 
 build: go.sum
 ifeq ($(OS),Windows_NT)
